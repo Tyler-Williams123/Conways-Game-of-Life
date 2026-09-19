@@ -102,21 +102,30 @@ void gameLoop(){
     listNumber = listNumber ^ 1;
 }
 
-int generateGridPositions(float sideLength, float* buffer){ // 2 must be divisble by sideLength
+int generateGridPositions(float sideLength, float* allSquares, float* aliveSquares){ // 2 must be divisble by sideLength
     int numSquaresX = 2 / sideLength;
     int numSquaresY = numSquaresX;
     
     int alive = 0;
+    int index = alive * 2;
 
     for(int y = 0; y < numSquaresY; y++){
         for(int x = 0; x <numSquaresX; x++){
-            if(!board[listNumber][x][y])
+            if(!board[listNumber][x][y]){
+                index = (x + y * SIDE_SIZE) * 2;
+                allSquares[index] = -1.0 + (x + 0.5) * sideLength;
+                allSquares[index + 1] = -1.0 + (y + 0.5) * sideLength;
                 continue;
+            }
 
-            int index = alive * 2;
-            buffer[index] = -1.0 + (x + 0.5) * sideLength;
-            buffer[index + 1] = -1.0 + (y + 0.5) * sideLength;
+            index = alive * 2;
+            aliveSquares[index] = -1.0 + (x + 0.5) * sideLength;
+            aliveSquares[index + 1] = -1.0 + (y + 0.5) * sideLength;
             alive++;
+
+            index = (x + y * SIDE_SIZE) * 2;
+            allSquares[index] = -1.0 + (x + 0.5) * sideLength;
+            allSquares[index + 1] = -1.0 + (y + 0.5) * sideLength;
         }
     }
 
@@ -135,9 +144,11 @@ unsigned int indices[] = {
     0, 3, 2,
 };
 
-float* positions;
+const char *outlineVertex = 
+"#version 330 core\nlayout (location = 0) in vec3 position;layout (location = 1) in vec3 colorIn;layout (location = 2) in vec2 instancePos;out vec3 localPos;out vec3 color;void main(){localPos = position;color = colorIn;vec2 finalPos = position.xy + instancePos;gl_Position = vec4(finalPos, position.z, 1.0);}";
 
-GLuint vertexShader;
+const char *outlineFragment = 
+"#version 330 core\nin vec3 color;in vec3 localPos;out vec4 colorOut;void main(){colorOut = vec4(1.0, 1.0, 0.0, 0.0);if(abs(localPos.x) > 1.0/128 - 0.001 || abs(localPos.y) > 1.0/128 - 0.001){colorOut = vec4(0.0, 0.0, 0.0, 1.0);}}";
 
 const char *vertexSource =
     "#version 330 core\n"
@@ -161,8 +172,8 @@ const char *fragmentSource =
             "colorOut = vec4(color, 1.0);\n"
         "}\n";
 
-GLuint createShaderProgram(){
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
+GLuint createShaderProgram(const char *const vertexSource, const char *const fragmentSource){
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexSource, NULL);
     glCompileShader(vertexShader);
 
@@ -199,15 +210,20 @@ int main(){
     GLFWwindow* window = glfwCreateWindow(800, 800, "Conway's Game of Life", NULL, NULL);
     glfwMakeContextCurrent(window);
     gladLoadGL(glfwGetProcAddress);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
-    board[listNumber][51][50] = 1;
     board[listNumber][50][50] = 1;
+    board[listNumber][51][50] = 1;
     board[listNumber][52][50] = 1;
     rememberAll();
-    positions = malloc(SIZE * 2 * sizeof(float));
-    int alive = generateGridPositions(SIDE_LENGTH, positions);
 
-    GLuint shaderProgram = createShaderProgram();
+    float* alivePositions = malloc(SIZE * 2 * sizeof(float));
+    float* allPositions = malloc(SIZE * 2 * sizeof(float));
+    int alive = generateGridPositions(SIDE_LENGTH, allPositions, alivePositions);
+
+    GLuint cellProgram = createShaderProgram(vertexSource, fragmentSource);
+    GLuint outlineProgram = createShaderProgram(outlineVertex, outlineFragment);
 
     GLuint VerticesBuffer;
     GLuint PositionsBuffer;
@@ -222,7 +238,7 @@ int main(){
     configureAttribPointer(VerticesBuffer, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);
     configureAttribPointer(VerticesBuffer, 1, 3, GL_FLOAT, 6 * sizeof(float), (void*)(sizeof(float) * 3));
     
-    createVBO(&PositionsBuffer, sizeof(float) * SIZE * 2, positions, GL_DYNAMIC_DRAW);
+    createVBO(&PositionsBuffer, sizeof(float) * SIZE * 2, alivePositions, GL_DYNAMIC_DRAW);
     configureAttribPointer(PositionsBuffer, 2, 2, GL_FLOAT, sizeof(float) * 2, (void*)0);
     glVertexAttribDivisor(2, 1);
 
@@ -238,21 +254,26 @@ int main(){
             lastTime = glfwGetTime();
             
             gameLoop();
-            alive = generateGridPositions(SIDE_LENGTH, positions);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * alive * 2, positions);
+            alive = generateGridPositions(SIDE_LENGTH, allPositions, alivePositions);
         }
-
+        
+        glClearColor(0.1, 0.1, 0.1, 1.0);
         glClear(GL_COLOR_BUFFER_BIT);
         
-        glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * alive * 2, alivePositions);
+        glUseProgram(cellProgram);
         glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, alive);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * SIZE * 2, allPositions);
+        glUseProgram(outlineProgram);
+        glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, SIZE);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    free(positions);
+    free(allPositions);
+    free(alivePositions);
     glfwTerminate();
     return 0;
 }
