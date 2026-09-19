@@ -148,7 +148,7 @@ const char *outlineVertex =
 "#version 330 core\nlayout (location = 0) in vec3 position;layout (location = 1) in vec3 colorIn;layout (location = 2) in vec2 instancePos;out vec3 localPos;out vec3 color;void main(){localPos = position;color = colorIn;vec2 finalPos = position.xy + instancePos;gl_Position = vec4(finalPos, position.z, 1.0);}";
 
 const char *outlineFragment = 
-"#version 330 core\nin vec3 color;in vec3 localPos;out vec4 colorOut;void main(){colorOut = vec4(1.0, 1.0, 0.0, 0.0);if(abs(localPos.x) > 1.0/128 - 0.001 || abs(localPos.y) > 1.0/128 - 0.001){colorOut = vec4(0.0, 0.0, 0.0, 1.0);}}";
+"#version 330 core\nin vec3 color;in vec3 localPos;out vec4 colorOut;void main(){colorOut = vec4(0.0, 0.0, 0.0, 0.0);if(abs(localPos.x) > 1.0/128 - 0.003 || abs(localPos.y) > 1.0/128 - 0.003){colorOut = vec4(0.0, 0.0, 0.0, 1.0);}}";
 
 const char *vertexSource =
     "#version 330 core\n"
@@ -207,7 +207,7 @@ void configureAttribPointer(GLuint VBO, GLuint index, GLint size, GLenum type, G
 
 int main(){
     glfwInit();
-    GLFWwindow* window = glfwCreateWindow(800, 800, "Conway's Game of Life", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(768, 768, "Conway's Game of Life", NULL, NULL);
     glfwMakeContextCurrent(window);
     gladLoadGL(glfwGetProcAddress);
     glEnable(GL_BLEND);
@@ -257,7 +257,7 @@ int main(){
             alive = generateGridPositions(SIDE_LENGTH, allPositions, alivePositions);
         }
         
-        glClearColor(0.1, 0.1, 0.1, 1.0);
+        glClearColor(0.2, 0.2, 0.2, 1.0);
         glClear(GL_COLOR_BUFFER_BIT);
         
         glBindVertexArray(VAO);
