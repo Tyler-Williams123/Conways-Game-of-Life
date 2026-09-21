@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #define SIDE_SIZE 128
 #define SIZE SIDE_SIZE * SIDE_SIZE
@@ -23,6 +24,9 @@ int remembered[SIDE_SIZE][SIDE_SIZE] = {0};
 int listNumber = 0;
 int cellsToCheck[2][SIZE][2] = {0};
 int checkLength[2] = {0};
+
+int runMode = 0;
+int cursor[2] = {64, 64};
 
 int checkNeighbors(int x, int y, int listNumber){
     int liveNeighbors = 0;
@@ -205,19 +209,37 @@ void configureAttribPointer(GLuint VBO, GLuint index, GLint size, GLenum type, G
     glEnableVertexAttribArray(index);
 }
 
+void keyCallBack(GLFWwindow *window, int key, int scancode, int action, int mods){
+    if(glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && action == GLFW_PRESS){
+        runMode ^= 1;
+    }
+    if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS && action == GLFW_PRESS){
+        board[listNumber][cursor[0]][cursor[1]] = 1;
+        remember(cursor[0], cursor[1], listNumber);
+    }
+    else if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS && action == GLFW_PRESS){
+        cursor[1] += 1;
+    }
+    else if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS && action == GLFW_PRESS){
+        cursor[1] -= 1;
+    }
+    else if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS && action == GLFW_PRESS){
+        cursor[0] -= 1;
+    }
+    else if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS && action == GLFW_PRESS){
+        cursor[0] += 1;
+    }
+}
+
 int main(){
     glfwInit();
     GLFWwindow* window = glfwCreateWindow(768, 768, "Conway's Game of Life", NULL, NULL);
+    glfwSetKeyCallback(window, keyCallBack);
     glfwMakeContextCurrent(window);
     gladLoadGL(glfwGetProcAddress);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
-    board[listNumber][50][50] = 1;
-    board[listNumber][51][50] = 1;
-    board[listNumber][52][50] = 1;
-    rememberAll();
-
     float* alivePositions = malloc(SIZE * 2 * sizeof(float));
     float* allPositions = malloc(SIZE * 2 * sizeof(float));
     int alive = generateGridPositions(SIDE_LENGTH, allPositions, alivePositions);
@@ -250,10 +272,16 @@ int main(){
     double lastTime = 0;
     double delay = 0.1;
     while(!glfwWindowShouldClose(window)){
-        if(glfwGetTime() - lastTime > delay){
-            lastTime = glfwGetTime();
-            
-            gameLoop();
+
+        if(runMode){
+            if(glfwGetTime() - lastTime > delay){
+                lastTime = glfwGetTime();
+                
+                gameLoop();
+                alive = generateGridPositions(SIDE_LENGTH, allPositions, alivePositions);
+            }
+        }
+        else{
             alive = generateGridPositions(SIDE_LENGTH, allPositions, alivePositions);
         }
         
@@ -261,9 +289,11 @@ int main(){
         glClear(GL_COLOR_BUFFER_BIT);
         
         glBindVertexArray(VAO);
+        
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * alive * 2, alivePositions);
         glUseProgram(cellProgram);
         glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, alive);
+        
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * SIZE * 2, allPositions);
         glUseProgram(outlineProgram);
         glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, SIZE);
