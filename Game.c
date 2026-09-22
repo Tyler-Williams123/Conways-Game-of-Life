@@ -151,6 +151,9 @@ const char *outlineVertex =
 const char *outlineFragment = 
 "#version 330 core\nin vec3 color;in vec3 localPos;out vec4 colorOut;void main(){colorOut = vec4(0.0, 0.0, 0.0, 0.0);if(abs(localPos.x) > 1.0/128 - 0.003 || abs(localPos.y) > 1.0/128 - 0.003){colorOut = vec4(0.0, 0.0, 0.0, 1.0);}}";
 
+const char *cursorFragment = 
+"#version 330 core\nin vec3 color;in vec3 localPos;out vec4 colorOut;void main(){colorOut = vec4(0.0, 0.0, 0.0, 0.0);if(abs(localPos.x) > 1.0/128 - 0.003 || abs(localPos.y) > 1.0/128 - 0.003){colorOut = vec4(0.0, 0.8, 0.7, 1.0);}}";
+
 const char *vertexSource =
     "#version 330 core\n"
     "layout (location = 0) in vec3 position;\n"
@@ -250,6 +253,7 @@ int main(){
 
     GLuint cellProgram = createShaderProgram(vertexSource, fragmentSource);
     GLuint outlineProgram = createShaderProgram(outlineVertex, outlineFragment);
+    GLuint cursorProgram = createShaderProgram(outlineVertex, cursorFragment);
 
     GLuint VerticesBuffer;
     GLuint PositionsBuffer;
@@ -301,6 +305,11 @@ int main(){
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * SIZE * 2, allPositions);
         glUseProgram(outlineProgram);
         glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, SIZE);
+        
+        float cursorPosition[2] = {(cursor[0] + 0.5) * SIDE_LENGTH - 1, (cursor[1] + 0.5) * SIDE_LENGTH - 1};
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 2, cursorPosition);
+        glUseProgram(cursorProgram);
+        glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, 1);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
