@@ -107,14 +107,11 @@ void gameLoop(){
 }
 
 int generateGridPositions(float sideLength, float* allSquares, float* aliveSquares){ // 2 must be divisble by sideLength
-    int numSquaresX = 2 / sideLength;
-    int numSquaresY = numSquaresX;
-    
     int alive = 0;
     int index = alive * 2;
 
-    for(int y = 0; y < numSquaresY; y++){
-        for(int x = 0; x <numSquaresX; x++){
+    for(int y = 0; y < SIDE_SIZE; y++){
+        for(int x = 0; x < SIDE_SIZE; x++){
             if(!board[listNumber][x][y]){
                 index = (x + y * SIDE_SIZE) * 2;
                 allSquares[index] = -1.0 + (x + 0.5) * sideLength;
@@ -213,8 +210,15 @@ void keyCallBack(GLFWwindow *window, int key, int scancode, int action, int mods
     if(glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && action == GLFW_PRESS){
         runMode ^= 1;
     }
-    if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS && action == GLFW_PRESS){
-        board[listNumber][cursor[0]][cursor[1]] = 1;
+    else if(glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS && action == GLFW_PRESS && !runMode){
+        for(int y = 0; y < SIDE_SIZE; y++){
+            for(int x = 0; x < SIDE_SIZE; x++){
+                board[listNumber][x][y] = 0;                
+            }
+        }
+    }
+    else if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS && action == GLFW_PRESS && !runMode){
+        board[listNumber][cursor[0]][cursor[1]] ^= 1;
         remember(cursor[0], cursor[1], listNumber);
     }
     else if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS && action == GLFW_PRESS){
