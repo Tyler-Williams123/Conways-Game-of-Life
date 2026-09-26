@@ -1,4 +1,4 @@
-#version 330 core
+#version 430 core
 
 #define SIDE_SIZE 128
 #define SIZE SIDE_SIZE * SIDE_SIZE
