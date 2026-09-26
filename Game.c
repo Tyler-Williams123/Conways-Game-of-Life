@@ -28,6 +28,19 @@ int checkLength[2] = {0};
 int runMode = 0;
 int cursor[2] = {64, 64};
 
+void ReadFile(const char *path, char* buffer){
+    FILE *file = fopen(path, "rb");
+
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    rewind(file);
+
+    fread(buffer, 1, size, file);
+    buffer[size] = '\0';
+
+    fclose(file);
+}
+
 int checkNeighbors(int x, int y, int listNumber){
     int liveNeighbors = 0;
     liveNeighbors += board[listNumber][Still(x)][Up(y)];
@@ -145,36 +158,13 @@ unsigned int indices[] = {
     0, 3, 2,
 };
 
-const char *outlineVertex = 
-"#version 330 core\nlayout (location = 0) in vec3 position;layout (location = 1) in vec3 colorIn;layout (location = 2) in vec2 instancePos;out vec3 localPos;out vec3 color;void main(){localPos = position;color = colorIn;vec2 finalPos = position.xy + instancePos;gl_Position = vec4(finalPos, position.z, 1.0);}";
+const char *outlineVertex;
+const char *outlineFragment;
+const char *cursorFragment;
+const char *vertexSource;
+const char *fragmentSource;
 
-const char *outlineFragment = 
-"#version 330 core\nin vec3 color;in vec3 localPos;out vec4 colorOut;void main(){colorOut = vec4(0.0, 0.0, 0.0, 0.0);if(abs(localPos.x) > 1.0/128 - 0.003 || abs(localPos.y) > 1.0/128 - 0.003){colorOut = vec4(0.0, 0.0, 0.0, 1.0);}}";
-
-const char *cursorFragment = 
-"#version 330 core\nin vec3 color;in vec3 localPos;out vec4 colorOut;void main(){colorOut = vec4(0.0, 0.0, 0.0, 0.0);if(abs(localPos.x) > 1.0/128 - 0.003 || abs(localPos.y) > 1.0/128 - 0.003){colorOut = vec4(0.0, 0.8, 0.7, 1.0);}}";
-
-const char *vertexSource =
-    "#version 330 core\n"
-    "layout (location = 0) in vec3 position;\n"
-    "layout (location = 1) in vec3 colorIn;\n"
-    "layout (location = 2) in vec2 instancePos;\n"
-    "out vec3 color;\n"
-    "void main()\n"
-    "{\n"
-        "color = colorIn;\n"
-        "vec2 finalPos = position.xy + instancePos;\n"
-        "gl_Position = vec4(finalPos, position.z, 1.0);\n"
-    "}\n";
-
-const char *fragmentSource =
-        "#version 330 core\n"
-        "in vec3 color;\n"
-        "out vec4 colorOut;\n"
-        "void main()\n"
-        "{\n"
-            "colorOut = vec4(color, 1.0);\n"
-        "}\n";
+const char *computeShader;
 
 GLuint createShaderProgram(const char *const vertexSource, const char *const fragmentSource){
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -246,19 +236,29 @@ int main(){
     gladLoadGL(glfwGetProcAddress);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     
     float* alivePositions = malloc(SIZE * 2 * sizeof(float));
     float* allPositions = malloc(SIZE * 2 * sizeof(float));
     int alive = generateGridPositions(SIDE_LENGTH, allPositions, alivePositions);
-
+    
+    ReadFile("vertexOutline.glsl", outlineVertex);
+    ReadFile("fragmentOutline.glsl", outlineFragment);
+    ReadFile("fragmentCursor.glsl", cursorFragment);
+    ReadFile("vertex.glsl", vertexSource);
+    ReadFile("fragment.glsl", fragmentSource);
     GLuint cellProgram = createShaderProgram(vertexSource, fragmentSource);
     GLuint outlineProgram = createShaderProgram(outlineVertex, outlineFragment);
     GLuint cursorProgram = createShaderProgram(outlineVertex, cursorFragment);
+    
+    ReadFile("compute.glsl", computeShader);
+    GLuint boardBuffers[2];
+    glGenBuffers(2, boardBuffers);
 
     GLuint VerticesBuffer;
     GLuint PositionsBuffer;
     GLuint EBO;
-
+    
     GLuint VAO;
     glGenBuffers(1, &EBO);
     glGenVertexArrays(1, &VAO);
