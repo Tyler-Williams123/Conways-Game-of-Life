@@ -10,6 +10,6 @@ void main()
 {
     localPos = position;
 
-    vec2 finalPos = position.xy + vec2((cursorPos.x + 0.5) * SIDE_LENGTH - 1, (cursorPos.y + 0.5) * SIDE_LENGTH - 1);
+    vec2 finalPos = position.xy + cursorPos.xy;
     gl_Position = vec4(finalPos, position.z, 1.0);
 }

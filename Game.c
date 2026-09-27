@@ -54,6 +54,7 @@ unsigned int indices[] = {
 char outlineVertex[SHADER_BUFFER_SIZE];
 char outlineFragment[SHADER_BUFFER_SIZE];
 char cursorFragment[SHADER_BUFFER_SIZE];
+char cursorVertex[SHADER_BUFFER_SIZE];
 char vertexSource[SHADER_BUFFER_SIZE];
 char fragmentSource[SHADER_BUFFER_SIZE];
 
@@ -150,11 +151,12 @@ int main(){
     ReadFile("vertexOutline.glsl", outlineVertex);
     ReadFile("fragmentOutline.glsl", outlineFragment);
     ReadFile("fragmentCursor.glsl", cursorFragment);
+    ReadFile("vertexCursor.glsl", cursorVertex);
     ReadFile("vertex.glsl", vertexSource);
     ReadFile("fragment.glsl", fragmentSource);
     GLuint cellProgram = createShaderProgram(vertexSource, fragmentSource);
     GLuint outlineProgram = createShaderProgram(outlineVertex, outlineFragment);
-    GLuint cursorProgram = createShaderProgram(outlineVertex, cursorFragment);
+    GLuint cursorProgram = createShaderProgram(cursorVertex, cursorFragment);
 
     ReadFile("compute.glsl", computeSource);
     GLuint computeProgram = createComputeShader(computeSource);
@@ -162,15 +164,16 @@ int main(){
     glGenBuffers(2, boardBuffers);
     
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, boardBuffers[curBoard]);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(board), board, GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(board[curBoard]), board[curBoard], GL_DYNAMIC_DRAW);
     
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, boardBuffers[curBoard ^ 1]);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(board), board, GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(board[curBoard]), board[curBoard], GL_DYNAMIC_DRAW);
 
     GLuint VerticesBuffer;
     GLuint EBO;
     
     GLuint VAO;
+    
     glGenBuffers(1, &EBO);
     glGenVertexArrays(1, &VAO);
     
@@ -181,8 +184,27 @@ int main(){
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_DYNAMIC_DRAW);
 
+    GLuint cursorPositionBuffer;
+    GLuint cursorVertexAttribute;
+    GLuint curosrElementBuffer;
+   
+    glGenBuffers(1, &curosrElementBuffer);
+    glGenVertexArrays(1, &cursorVertexAttribute);
+
+    glBindVertexArray(cursorVertexAttribute);
+    configureAttribPointer(VerticesBuffer, 0, 3, GL_FLOAT, 3 * sizeof(float), (void*)0);
+    
+    float cursorPos[2] = {(cursor[0] + 0.5) * SIDE_LENGTH - 1, (cursor[1] + 0.5) * SIDE_LENGTH - 1};
+    createVBO(&cursorPositionBuffer, sizeof(cursorPos), cursorPos, GL_DYNAMIC_DRAW);
+    configureAttribPointer(cursorPositionBuffer, 1, 2, GL_FLOAT, 2 * sizeof(float), (void*)0);
+    glVertexAttribDivisor(1, 1);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, curosrElementBuffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_DYNAMIC_DRAW);
+
     double lastTime = 0;
     double delay = 0.1;
+
     while(!glfwWindowShouldClose(window)){
 
         if(runMode){
@@ -204,6 +226,7 @@ int main(){
         glClear(GL_COLOR_BUFFER_BIT);
         
         glBindVertexArray(VAO);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, boardBuffers[curBoard]);
         
         glUseProgram(cellProgram);
         glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, SIZE);
@@ -211,8 +234,11 @@ int main(){
         glUseProgram(outlineProgram);
         glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, SIZE);
         
-        float cursorPosition[2] = {(cursor[0] + 0.5) * SIDE_LENGTH - 1, (cursor[1] + 0.5) * SIDE_LENGTH - 1};
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 2, cursorPosition);
+        glBindVertexArray(cursorVertexAttribute);
+        glBindBuffer(GL_ARRAY_BUFFER, cursorPositionBuffer);
+        cursorPos[0] = (cursor[0] + 0.5) * SIDE_LENGTH - 1;
+        cursorPos[1] = (cursor[1] + 0.5) * SIDE_LENGTH - 1;
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(cursorPos), cursorPos);
         glUseProgram(cursorProgram);
         glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, 1);
 
