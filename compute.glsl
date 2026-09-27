@@ -45,11 +45,19 @@ void main(){
     liveNeighbors += readValues[index];
 
     index = x + y * SIDE_SIZE;
-    writeValues[index] = readValues[index];
-    if(liveNeighbors < 2 || liveNeighbors > 3){
-        writeValues[index] = 0;
+    if(currentCell == 1){
+        if(liveNeighbors == 2 || liveNeighbors == 3){
+            writeValues[index] = 1;
+        } else {
+            writeValues[index] = 0;
+        }
     }
-    else if(liveNeighbors == 3){
-        writeValues[index] = 1;
+    else {
+        if(liveNeighbors == 3){
+            writeValues[index] = 1;
+        }
+        else {
+            writeValues[index] = 0;
+        }
     }
 }
