@@ -7,7 +7,7 @@
 
 #define SIDE_SIZE 128
 #define SIZE SIDE_SIZE * SIDE_SIZE
-#define SHADER_BUFFER_SIZE 1600
+#define SHADER_BUFFER_SIZE 1700
 
 #define Up(y)    (((y) + 1) % SIDE_SIZE)
 #define Down(y)  (((y) - 1 + SIDE_SIZE) % SIDE_SIZE)
@@ -20,11 +20,8 @@
 
 int board[2][SIDE_SIZE][SIDE_SIZE] = {0};
 
-int remembered[SIDE_SIZE][SIDE_SIZE] = {0};
-
 int curBoard = 0;
-int cellsToCheck[2][SIZE][2] = {0};
-int checkLength[2] = {0};
+GLuint boardBuffers[2];
 
 int runMode = 0;
 int cursor[2] = {64, 64};
@@ -60,7 +57,7 @@ char cursorFragment[SHADER_BUFFER_SIZE];
 char vertexSource[SHADER_BUFFER_SIZE];
 char fragmentSource[SHADER_BUFFER_SIZE];
 
-char *computeSource;
+char computeSource[SHADER_BUFFER_SIZE];
 
 GLuint createShaderProgram(const char *const vertexSource, const char *const fragmentSource){
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -81,6 +78,19 @@ GLuint createShaderProgram(const char *const vertexSource, const char *const fra
     glDeleteShader(fragmentShader);
 
     return shaderProgram;
+}
+
+GLuint createComputeShader(const char *computeSource){
+    GLuint computeShader = glCreateShader(GL_COMPUTE_SHADER);
+    glShaderSource(computeShader, 1, &computeSource, NULL);
+    glCompileShader(computeShader);
+
+    GLuint computeProgram = glCreateProgram();
+    glAttachShader(computeProgram, computeShader);
+    glLinkProgram(computeProgram);
+    glDeleteShader(computeShader);
+
+    return computeProgram;
 }
 
 void createVBO(GLuint* VBO, size_t dataSize, void* data, GLenum usage){
@@ -105,9 +115,14 @@ void keyCallBack(GLFWwindow *window, int key, int scancode, int action, int mods
                 board[curBoard][x][y] = 0;                
             }
         }
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, boardBuffers[curBoard]);
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, SIZE * sizeof(int), board[curBoard]);
     }
     else if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS && action == GLFW_PRESS && !runMode){
         board[curBoard][cursor[0]][cursor[1]] ^= 1;
+
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, boardBuffers[curBoard]);
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, (cursor[0] + cursor[1] * SIDE_SIZE) * sizeof(int), sizeof(int), &board[curBoard][cursor[0]][cursor[1]]);
     }
     else if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS && action == GLFW_PRESS){
         cursor[1] += 1;
@@ -142,22 +157,14 @@ int main(){
     GLuint cursorProgram = createShaderProgram(outlineVertex, cursorFragment);
 
     ReadFile("compute.glsl", computeSource);
-    GLuint computeShader = glCreateShader(GL_COMPUTE_SHADER);
-    glShaderSource(computeShader, 1, (const char *const *)computeSource, NULL);
-    glCompileShader(computeShader);
+    GLuint computeProgram = createComputeShader(computeSource);
 
-    GLuint computeProgram = glCreateProgram();
-    glAttachShader(computeProgram, computeShader);
-    glLinkProgram(computeProgram);
-    glDeleteShader(computeShader);
-
-    GLuint boardBuffers[2];
     glGenBuffers(2, boardBuffers);
     
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, boardBuffers[0]);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, boardBuffers[curBoard]);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(board), board, GL_DYNAMIC_DRAW);
     
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, boardBuffers[1]);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, boardBuffers[curBoard ^ 1]);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(board), board, GL_DYNAMIC_DRAW);
 
     GLuint VerticesBuffer;
