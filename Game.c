@@ -7,6 +7,7 @@
 
 #define SIDE_SIZE 128
 #define SIZE SIDE_SIZE * SIDE_SIZE
+#define SHADER_BUFFER_SIZE 1600
 
 #define Up(y)    (((y) + 1) % SIDE_SIZE)
 #define Down(y)  (((y) - 1 + SIDE_SIZE) % SIDE_SIZE)
@@ -41,111 +42,6 @@ void ReadFile(const char *path, char* buffer){
     fclose(file);
 }
 
-int checkNeighbors(int x, int y, int curBoard){
-    int liveNeighbors = 0;
-    liveNeighbors += board[curBoard][Still(x)][Up(y)];
-    liveNeighbors += board[curBoard][Left(x)][Up(y)];
-    liveNeighbors += board[curBoard][Right(x)][Up(y)];
-    
-    liveNeighbors += board[curBoard][Still(x)][Down(y)];
-    liveNeighbors += board[curBoard][Left(x)][Down(y)];
-    liveNeighbors += board[curBoard][Right(x)][Down(y)];
-    
-    liveNeighbors += board[curBoard][Left(x)][Still(y)];
-    liveNeighbors += board[curBoard][Right(x)][Still(y)];
-
-    return liveNeighbors;
-}
-
-void addCellToCheck(int x, int y, int curBoard){
-    cellsToCheck[curBoard][checkLength[curBoard]][0] = x;
-    cellsToCheck[curBoard][checkLength[curBoard]++][1] = y;
-}
-
-void rememberAll(){
-    for(int y = 0; y < SIDE_SIZE; y++){
-        for(int x = 0; x < SIDE_SIZE; x++){
-            addCellToCheck(x, y, curBoard);
-        }
-    }
-}
-
-void remember(int x, int y, int curBoard){
-    addCellToCheck(x, y, curBoard);
-    
-    addCellToCheck(Still(x), Up(y), curBoard);
-    addCellToCheck(Left(x), Up(y), curBoard);
-    addCellToCheck(Right(x), Up(y), curBoard);
-    
-    addCellToCheck(Still(x), Down(y), curBoard);
-    addCellToCheck(Left(x), Down(y), curBoard);
-    addCellToCheck(Right(x), Down(y), curBoard);
-    
-    addCellToCheck(Right(x), Still(y), curBoard);
-    addCellToCheck(Left(x), Still(y), curBoard);
-}
-
-void gameLoop(){
-    for(int i = 0; i < checkLength[curBoard]; i++){
-        int x = cellsToCheck[curBoard][i][0];
-        int y = cellsToCheck[curBoard][i][1];
-        
-        if(remembered[x][y] == 1)
-            continue;
-        remembered[x][y] = 1;
-
-        int neighbors = checkNeighbors(x, y, curBoard);
-
-        if(board[curBoard][x][y]){
-            if(neighbors < 2 || neighbors > 3){
-                board[curBoard ^ 1][x][y] = 0;
-            }
-            else{
-                board[curBoard ^ 1][x][y] = 1;
-            }
-        }
-        else if(neighbors == 3){
-            board[curBoard ^ 1][x][y] = 1;
-        }
-        
-        if(board[curBoard ^ 1][x][y] == 1){
-            remember(x, y, curBoard ^ 1);
-        }
-    }
-    memset(remembered, 0, sizeof(remembered));
-    memset(board[curBoard], 0, sizeof(board[curBoard]));
-    
-    checkLength[curBoard] = 0;
-    curBoard = curBoard ^ 1;
-}
-
-int generateGridPositions(float sideLength, float* allSquares, float* aliveSquares){ // 2 must be divisble by sideLength
-    int alive = 0;
-    int index = alive * 2;
-
-    for(int y = 0; y < SIDE_SIZE; y++){
-        for(int x = 0; x < SIDE_SIZE; x++){
-            if(!board[curBoard][x][y]){
-                index = (x + y * SIDE_SIZE) * 2;
-                allSquares[index] = -1.0 + (x + 0.5) * sideLength;
-                allSquares[index + 1] = -1.0 + (y + 0.5) * sideLength;
-                continue;
-            }
-
-            index = alive * 2;
-            aliveSquares[index] = -1.0 + (x + 0.5) * sideLength;
-            aliveSquares[index + 1] = -1.0 + (y + 0.5) * sideLength;
-            alive++;
-
-            index = (x + y * SIDE_SIZE) * 2;
-            allSquares[index] = -1.0 + (x + 0.5) * sideLength;
-            allSquares[index + 1] = -1.0 + (y + 0.5) * sideLength;
-        }
-    }
-
-    return alive;
-}
-
 float vertices[] = {
     -HALF_SIDE,  HALF_SIDE, 0.00, // top left
      HALF_SIDE,  HALF_SIDE, 0.00, //top right
@@ -158,11 +54,11 @@ unsigned int indices[] = {
     0, 3, 2,
 };
 
-char *outlineVertex;
-char *outlineFragment;
-char *cursorFragment;
-char *vertexSource;
-char *fragmentSource;
+char outlineVertex[SHADER_BUFFER_SIZE];
+char outlineFragment[SHADER_BUFFER_SIZE];
+char cursorFragment[SHADER_BUFFER_SIZE];
+char vertexSource[SHADER_BUFFER_SIZE];
+char fragmentSource[SHADER_BUFFER_SIZE];
 
 char *computeSource;
 
@@ -212,7 +108,6 @@ void keyCallBack(GLFWwindow *window, int key, int scancode, int action, int mods
     }
     else if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS && action == GLFW_PRESS && !runMode){
         board[curBoard][cursor[0]][cursor[1]] ^= 1;
-        remember(cursor[0], cursor[1], curBoard);
     }
     else if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS && action == GLFW_PRESS){
         cursor[1] += 1;
