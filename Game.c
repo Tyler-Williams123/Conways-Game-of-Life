@@ -1,5 +1,5 @@
 #include <string.h>
-#include <glad/gl.h>
+#include <glad/include/glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <math.h>
 #include <stdlib.h>
@@ -21,7 +21,7 @@ int board[2][SIDE_SIZE][SIDE_SIZE] = {0};
 
 int remembered[SIDE_SIZE][SIDE_SIZE] = {0};
 
-int listNumber = 0;
+int curBoard = 0;
 int cellsToCheck[2][SIZE][2] = {0};
 int checkLength[2] = {0};
 
@@ -41,82 +41,82 @@ void ReadFile(const char *path, char* buffer){
     fclose(file);
 }
 
-int checkNeighbors(int x, int y, int listNumber){
+int checkNeighbors(int x, int y, int curBoard){
     int liveNeighbors = 0;
-    liveNeighbors += board[listNumber][Still(x)][Up(y)];
-    liveNeighbors += board[listNumber][Left(x)][Up(y)];
-    liveNeighbors += board[listNumber][Right(x)][Up(y)];
+    liveNeighbors += board[curBoard][Still(x)][Up(y)];
+    liveNeighbors += board[curBoard][Left(x)][Up(y)];
+    liveNeighbors += board[curBoard][Right(x)][Up(y)];
     
-    liveNeighbors += board[listNumber][Still(x)][Down(y)];
-    liveNeighbors += board[listNumber][Left(x)][Down(y)];
-    liveNeighbors += board[listNumber][Right(x)][Down(y)];
+    liveNeighbors += board[curBoard][Still(x)][Down(y)];
+    liveNeighbors += board[curBoard][Left(x)][Down(y)];
+    liveNeighbors += board[curBoard][Right(x)][Down(y)];
     
-    liveNeighbors += board[listNumber][Left(x)][Still(y)];
-    liveNeighbors += board[listNumber][Right(x)][Still(y)];
+    liveNeighbors += board[curBoard][Left(x)][Still(y)];
+    liveNeighbors += board[curBoard][Right(x)][Still(y)];
 
     return liveNeighbors;
 }
 
-void addCellToCheck(int x, int y, int listNumber){
-    cellsToCheck[listNumber][checkLength[listNumber]][0] = x;
-    cellsToCheck[listNumber][checkLength[listNumber]++][1] = y;
+void addCellToCheck(int x, int y, int curBoard){
+    cellsToCheck[curBoard][checkLength[curBoard]][0] = x;
+    cellsToCheck[curBoard][checkLength[curBoard]++][1] = y;
 }
 
 void rememberAll(){
     for(int y = 0; y < SIDE_SIZE; y++){
         for(int x = 0; x < SIDE_SIZE; x++){
-            addCellToCheck(x, y, listNumber);
+            addCellToCheck(x, y, curBoard);
         }
     }
 }
 
-void remember(int x, int y, int listNumber){
-    addCellToCheck(x, y, listNumber);
+void remember(int x, int y, int curBoard){
+    addCellToCheck(x, y, curBoard);
     
-    addCellToCheck(Still(x), Up(y), listNumber);
-    addCellToCheck(Left(x), Up(y), listNumber);
-    addCellToCheck(Right(x), Up(y), listNumber);
+    addCellToCheck(Still(x), Up(y), curBoard);
+    addCellToCheck(Left(x), Up(y), curBoard);
+    addCellToCheck(Right(x), Up(y), curBoard);
     
-    addCellToCheck(Still(x), Down(y), listNumber);
-    addCellToCheck(Left(x), Down(y), listNumber);
-    addCellToCheck(Right(x), Down(y), listNumber);
+    addCellToCheck(Still(x), Down(y), curBoard);
+    addCellToCheck(Left(x), Down(y), curBoard);
+    addCellToCheck(Right(x), Down(y), curBoard);
     
-    addCellToCheck(Right(x), Still(y), listNumber);
-    addCellToCheck(Left(x), Still(y), listNumber);
+    addCellToCheck(Right(x), Still(y), curBoard);
+    addCellToCheck(Left(x), Still(y), curBoard);
 }
 
 void gameLoop(){
-    for(int i = 0; i < checkLength[listNumber]; i++){
-        int x = cellsToCheck[listNumber][i][0];
-        int y = cellsToCheck[listNumber][i][1];
+    for(int i = 0; i < checkLength[curBoard]; i++){
+        int x = cellsToCheck[curBoard][i][0];
+        int y = cellsToCheck[curBoard][i][1];
         
         if(remembered[x][y] == 1)
             continue;
         remembered[x][y] = 1;
 
-        int neighbors = checkNeighbors(x, y, listNumber);
+        int neighbors = checkNeighbors(x, y, curBoard);
 
-        if(board[listNumber][x][y]){
+        if(board[curBoard][x][y]){
             if(neighbors < 2 || neighbors > 3){
-                board[listNumber ^ 1][x][y] = 0;
+                board[curBoard ^ 1][x][y] = 0;
             }
             else{
-                board[listNumber ^ 1][x][y] = 1;
+                board[curBoard ^ 1][x][y] = 1;
             }
         }
         else if(neighbors == 3){
-            board[listNumber ^ 1][x][y] = 1;
+            board[curBoard ^ 1][x][y] = 1;
         }
         
-        if(board[listNumber ^ 1][x][y] == 1){
-            remember(x, y, listNumber ^ 1);
+        if(board[curBoard ^ 1][x][y] == 1){
+            remember(x, y, curBoard ^ 1);
         }
     }
     memset(remembered, 0, sizeof(remembered));
-    memset(board[listNumber], 0, sizeof(board[listNumber]));
+    memset(board[curBoard], 0, sizeof(board[curBoard]));
     
-    checkLength[listNumber] = 0;
-    listNumber = listNumber ^ 1;
+    checkLength[curBoard] = 0;
+    curBoard = curBoard ^ 1;
 }
 
 int generateGridPositions(float sideLength, float* allSquares, float* aliveSquares){ // 2 must be divisble by sideLength
@@ -125,7 +125,7 @@ int generateGridPositions(float sideLength, float* allSquares, float* aliveSquar
 
     for(int y = 0; y < SIDE_SIZE; y++){
         for(int x = 0; x < SIDE_SIZE; x++){
-            if(!board[listNumber][x][y]){
+            if(!board[curBoard][x][y]){
                 index = (x + y * SIDE_SIZE) * 2;
                 allSquares[index] = -1.0 + (x + 0.5) * sideLength;
                 allSquares[index + 1] = -1.0 + (y + 0.5) * sideLength;
@@ -164,7 +164,7 @@ const char *cursorFragment;
 const char *vertexSource;
 const char *fragmentSource;
 
-const char *computeShader;
+const char *computeSource;
 
 GLuint createShaderProgram(const char *const vertexSource, const char *const fragmentSource){
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -206,13 +206,13 @@ void keyCallBack(GLFWwindow *window, int key, int scancode, int action, int mods
     else if(glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS && action == GLFW_PRESS && !runMode){
         for(int y = 0; y < SIDE_SIZE; y++){
             for(int x = 0; x < SIDE_SIZE; x++){
-                board[listNumber][x][y] = 0;                
+                board[curBoard][x][y] = 0;                
             }
         }
     }
     else if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS && action == GLFW_PRESS && !runMode){
-        board[listNumber][cursor[0]][cursor[1]] ^= 1;
-        remember(cursor[0], cursor[1], listNumber);
+        board[curBoard][cursor[0]][cursor[1]] ^= 1;
+        remember(cursor[0], cursor[1], curBoard);
     }
     else if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS && action == GLFW_PRESS){
         cursor[1] += 1;
@@ -233,7 +233,7 @@ int main(){
     GLFWwindow* window = glfwCreateWindow(768, 768, "Conway's Game of Life", NULL, NULL);
     glfwSetKeyCallback(window, keyCallBack);
     glfwMakeContextCurrent(window);
-    gladLoadGL(glfwGetProcAddress);
+    gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -251,9 +251,29 @@ int main(){
     GLuint outlineProgram = createShaderProgram(outlineVertex, outlineFragment);
     GLuint cursorProgram = createShaderProgram(outlineVertex, cursorFragment);
     
-    ReadFile("compute.glsl", computeShader);
+
+
+    ReadFile("compute.glsl", computeSource);
+    GLuint computeShader = glCreateShader(GL_COMPUTE_SHADER);
+    glShaderSource(computeShader, 1, computeSource, NULL);
+    glCompileShader(computeShader);
+
+    GLuint computeProgram = glCreateProgram();
+    glAttachShader(computeProgram, computeShader);
+    glLinkProgram(computeProgram);
+    glDeleteShader(computeShader);
+
     GLuint boardBuffers[2];
     glGenBuffers(2, boardBuffers);
+    
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, boardBuffers[0]);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(board), board, GL_DYNAMIC_DRAW);
+    
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, boardBuffers[1]);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(board), board, GL_DYNAMIC_DRAW);
+
+
+
 
     GLuint VerticesBuffer;
     GLuint PositionsBuffer;
@@ -285,7 +305,14 @@ int main(){
             if(glfwGetTime() - lastTime > delay){
                 lastTime = glfwGetTime();
                 
-                gameLoop();
+                // gameLoop();
+                glUseProgram(computeProgram);
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, boardBuffers[curBoard]);
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, boardBuffers[curBoard ^ 1]);
+                glDispatchCompute(16, 16, 1);
+                glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+                curBoard ^= 1;
+
                 alive = generateGridPositions(SIDE_LENGTH, allPositions, alivePositions);
             }
         }
