@@ -22,8 +22,8 @@ uint x = gl_GlobalInvocationID.x;
 uint y = gl_GlobalInvocationID.y;
 
 void main(){
-    int index = x + y * SIDE_SIZE;
-    int liveNeighbors = 0;
+    uint index = x + y * SIDE_SIZE;
+    uint liveNeighbors = 0;
 
     index = Still(x) + Up(y) * SIDE_SIZE;
     liveNeighbors += readValues[index];
@@ -45,7 +45,7 @@ void main(){
     liveNeighbors += readValues[index];
 
     index = x + y * SIDE_SIZE;
-    if(currentCell == 1){
+    if(readValues[index] == 1){
         if(liveNeighbors == 2 || liveNeighbors == 3){
             writeValues[index] = 1;
         } else {
