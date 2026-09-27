@@ -1,5 +1,5 @@
 #include <string.h>
-#include <glad/include/glad/glad.h>
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <math.h>
 #include <stdlib.h>
@@ -147,10 +147,10 @@ int generateGridPositions(float sideLength, float* allSquares, float* aliveSquar
 }
 
 float vertices[] = {
-    -HALF_SIDE,  HALF_SIDE, 0.00, 1.0, 1.0, 1.0, // top left
-     HALF_SIDE,  HALF_SIDE, 0.00, 1.0, 1.0, 1.0, //top right
-     HALF_SIDE, -HALF_SIDE, 0.00, 1.0, 1.0, 1.0, // bottom right
-    -HALF_SIDE, -HALF_SIDE, 0.00, 1.0, 1.0, 1.0, //bottome left
+    -HALF_SIDE,  HALF_SIDE, 0.00, // top left
+     HALF_SIDE,  HALF_SIDE, 0.00, //top right
+     HALF_SIDE, -HALF_SIDE, 0.00, // bottom right
+    -HALF_SIDE, -HALF_SIDE, 0.00, //bottome left
 };
 
 unsigned int indices[] = {
@@ -158,13 +158,13 @@ unsigned int indices[] = {
     0, 3, 2,
 };
 
-const char *outlineVertex;
-const char *outlineFragment;
-const char *cursorFragment;
-const char *vertexSource;
-const char *fragmentSource;
+char *outlineVertex;
+char *outlineFragment;
+char *cursorFragment;
+char *vertexSource;
+char *fragmentSource;
 
-const char *computeSource;
+char *computeSource;
 
 GLuint createShaderProgram(const char *const vertexSource, const char *const fragmentSource){
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -237,11 +237,6 @@ int main(){
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    
-    float* alivePositions = malloc(SIZE * 2 * sizeof(float));
-    float* allPositions = malloc(SIZE * 2 * sizeof(float));
-    int alive = generateGridPositions(SIDE_LENGTH, allPositions, alivePositions);
-    
     ReadFile("vertexOutline.glsl", outlineVertex);
     ReadFile("fragmentOutline.glsl", outlineFragment);
     ReadFile("fragmentCursor.glsl", cursorFragment);
@@ -250,12 +245,10 @@ int main(){
     GLuint cellProgram = createShaderProgram(vertexSource, fragmentSource);
     GLuint outlineProgram = createShaderProgram(outlineVertex, outlineFragment);
     GLuint cursorProgram = createShaderProgram(outlineVertex, cursorFragment);
-    
-
 
     ReadFile("compute.glsl", computeSource);
     GLuint computeShader = glCreateShader(GL_COMPUTE_SHADER);
-    glShaderSource(computeShader, 1, computeSource, NULL);
+    glShaderSource(computeShader, 1, (const char *const *)computeSource, NULL);
     glCompileShader(computeShader);
 
     GLuint computeProgram = glCreateProgram();
@@ -272,11 +265,7 @@ int main(){
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, boardBuffers[1]);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(board), board, GL_DYNAMIC_DRAW);
 
-
-
-
     GLuint VerticesBuffer;
-    GLuint PositionsBuffer;
     GLuint EBO;
     
     GLuint VAO;
@@ -285,18 +274,11 @@ int main(){
     
     glBindVertexArray(VAO);
     createVBO(&VerticesBuffer, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
-    configureAttribPointer(VerticesBuffer, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);
-    configureAttribPointer(VerticesBuffer, 1, 3, GL_FLOAT, 6 * sizeof(float), (void*)(sizeof(float) * 3));
+    configureAttribPointer(VerticesBuffer, 0, 3, GL_FLOAT, 3 * sizeof(float), (void*)0);
     
-    createVBO(&PositionsBuffer, sizeof(float) * SIZE * 2, alivePositions, GL_DYNAMIC_DRAW);
-    configureAttribPointer(PositionsBuffer, 2, 2, GL_FLOAT, sizeof(float) * 2, (void*)0);
-    glVertexAttribDivisor(2, 1);
-
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_DYNAMIC_DRAW);
 
-    glBindBuffer(GL_ARRAY_BUFFER, PositionsBuffer);
-    
     double lastTime = 0;
     double delay = 0.1;
     while(!glfwWindowShouldClose(window)){
@@ -305,19 +287,15 @@ int main(){
             if(glfwGetTime() - lastTime > delay){
                 lastTime = glfwGetTime();
                 
-                // gameLoop();
                 glUseProgram(computeProgram);
                 glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, boardBuffers[curBoard]);
                 glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, boardBuffers[curBoard ^ 1]);
                 glDispatchCompute(16, 16, 1);
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                 curBoard ^= 1;
-
-                alive = generateGridPositions(SIDE_LENGTH, allPositions, alivePositions);
             }
         }
         else{
-            alive = generateGridPositions(SIDE_LENGTH, allPositions, alivePositions);
         }
         
         glClearColor(0.2, 0.2, 0.2, 1.0);
@@ -325,11 +303,9 @@ int main(){
         
         glBindVertexArray(VAO);
         
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * alive * 2, alivePositions);
         glUseProgram(cellProgram);
-        glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, alive);
+        glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, SIZE);
         
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * SIZE * 2, allPositions);
         glUseProgram(outlineProgram);
         glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, SIZE);
         
@@ -342,8 +318,6 @@ int main(){
         glfwPollEvents();
     }
 
-    free(allPositions);
-    free(alivePositions);
     glfwTerminate();
     return 0;
 }
