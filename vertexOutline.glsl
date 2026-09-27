@@ -3,7 +3,7 @@
 #define SIDE_LENGTH (2.0 / SIDE_SIZE)
 
 layout (location = 0) in vec3 position;
-layout (binding = 0) buffer readBoard{
+layout (binding = 1) buffer readBoard{
     uint board[];
 };
 
