@@ -14,7 +14,6 @@ void main()
     localPos = position;
     int x = index % 128;
     int y = index / 128;
-    color = board[index] ? vec3(1.0, 1.0, 1.0) : vec3(0.0, 0.0, 0.0);
 
     vec2 finalPos = position.xy + vec2((x + 0.5) * SIDE_LENGTH - 1, (y + 0.5) * SIDE_LENGTH - 1);
     gl_Position = vec4(finalPos, position.z, 1.0);
