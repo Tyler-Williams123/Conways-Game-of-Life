@@ -1,7 +1,7 @@
 An implementation of Conway's Game of Life in C using OpenGL/GLFW for graphics
 
 Implementation:
-The simulation uses an active cell system to check only cells that are alive, or have recently changed.
+The simulation uses compute shaders to simuluate every cell on every frame.
 
 Controls:
 Space to pause/resume
